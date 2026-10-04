@@ -1,6 +1,6 @@
 import unittest
 
-from secheaders.checks import analyze, parse_csp, score
+from secheaders.checks import analyze, check_blocked, detect_protection, parse_csp, score
 
 GOOD = {
     "Strict-Transport-Security": "max-age=63072000; includeSubDomains",
@@ -127,6 +127,27 @@ class TestCookies(unittest.TestCase):
     def test_cookie_value_with_equals_sign(self):
         f = analyze(GOOD, ["token=a=b==; Secure; HttpOnly; SameSite=Strict"])
         self.assertEqual(statuses(f, "Cookies"), {"pass"})
+
+
+class TestBlocked(unittest.TestCase):
+    def test_normal_response_is_not_blocked(self):
+        self.assertEqual(check_blocked(200, {"server": "cloudflare"}, []), [])
+
+    def test_cloudflare_challenge_is_detected(self):
+        f = check_blocked(403, {"server": "cloudflare", "cf-mitigated": "challenge"}, [])
+        self.assertEqual(len(f), 1)
+        self.assertIn("Cloudflare", f[0].message)
+        self.assertEqual(f[0].penalty, 0)  # a warning, but it must not change the score
+
+    def test_unknown_vendor_still_warns(self):
+        f = check_blocked(429, {}, [])
+        self.assertIn("HTTP 429", f[0].message)
+
+    def test_vendor_fingerprints(self):
+        self.assertEqual(detect_protection({"x-iinfo": "1"}, []), "Imperva")
+        self.assertEqual(detect_protection({}, ["visid_incap_1=x"]), "Imperva")
+        self.assertEqual(detect_protection({"server": "AkamaiGHost"}, []), "Akamai")
+        self.assertIsNone(detect_protection({"server": "nginx"}, []))
 
 
 if __name__ == "__main__":

@@ -8,7 +8,8 @@ import unittest
 from contextlib import redirect_stdout
 
 from secheaders.cli import main
-from secheaders.scanner import ScanError, normalize, scan
+from secheaders.report import to_text
+from secheaders.scanner import ScanError, check_https_redirect, normalize, scan
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -19,6 +20,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Set-Cookie", "a=1; Secure; HttpOnly; SameSite=Lax")
+        elif self.path == "/blocked":
+            # mimics a Cloudflare bot challenge
+            self.send_response(403)
+            self.send_header("Server", "cloudflare")
+            self.send_header("cf-mitigated", "challenge")
         elif self.path == "/missing":
             self.send_response(404)
             self.send_header("X-Powered-By", "Express")
@@ -55,6 +61,21 @@ class TestScanner(unittest.TestCase):
         r = scan(self.base + "/missing")
         self.assertEqual(r.status, 404)
         self.assertTrue(any("Express" in f.message for f in r.findings))
+
+    def test_bot_challenge_is_flagged(self):
+        r = scan(self.base + "/blocked")
+        self.assertTrue(r.blocked)
+        self.assertEqual(r.findings[0].check, "Blocked response")
+        self.assertIn("note", to_text(r))
+
+    def test_normal_page_is_not_flagged(self):
+        self.assertFalse(scan(self.base + "/hardened").blocked)
+
+    def test_redirect_check_does_not_fail_on_blocked_http(self):
+        # check_https_redirect swaps https:// for http://, which hits our local server's /blocked page
+        f = check_https_redirect("https" + self.base[4:] + "/blocked", timeout=5)
+        self.assertEqual(f.status, "info")
+        self.assertIn("Could not verify", f.message)
 
     def test_connection_refused_raises_scan_error(self):
         with self.assertRaises(ScanError):

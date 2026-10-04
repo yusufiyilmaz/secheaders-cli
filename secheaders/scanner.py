@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlsplit, urlunsplit
 
 from . import __version__
-from .checks import Finding, analyze, score
+from .checks import BLOCK_STATUSES, Finding, analyze, check_blocked, score
 
 USER_AGENT = f"secheaders/{__version__} (+https://github.com/yusufiyilmaz/secheaders-cli)"
 
@@ -29,6 +29,7 @@ class Result:
     score: int
     grade: str
     findings: list[Finding] = field(default_factory=list)
+    blocked: bool = False  # True when the response looks like a block / bot-challenge page
 
 
 def normalize(url: str) -> str:
@@ -72,11 +73,14 @@ def check_https_redirect(url: str, timeout: float) -> Finding:
     parts = urlsplit(url)
     http_url = urlunsplit(("http", parts.netloc, parts.path or "/", parts.query, ""))
     try:
-        final, *_ = fetch(http_url, timeout)
+        final, status, *_ = fetch(http_url, timeout)
     except ScanError as e:
         return Finding(name, "info", "info", f"Plain HTTP could not be checked ({e}).")
     if urlsplit(final).scheme == "https":
         return Finding(name, "pass", "info", "http:// redirects to https://")
+    if status in BLOCK_STATUSES:
+        # A block/challenge page answered instead of the site, so we cannot tell whether it redirects.
+        return Finding(name, "info", "info", f"Could not verify: plain HTTP returned HTTP {status} (likely blocked).")
     return Finding(name, "fail", "high", "http:// does not redirect to https://; visitors can stay on plain HTTP.",
                    "Redirect all HTTP traffic to HTTPS (301).")
 
@@ -88,9 +92,10 @@ def scan(url: str, timeout: float = 10.0, check_redirect: bool = True) -> Result
     elapsed = time.perf_counter() - t0
 
     is_https = urlsplit(final).scheme == "https"
-    findings = analyze(headers, cookies, is_https)
+    blocked = check_blocked(status, {k.lower(): v for k, v in headers.items()}, cookies)
+    findings = blocked + analyze(headers, cookies, is_https)
     if check_redirect and urlsplit(url).scheme == "https":
-        findings.insert(0, check_https_redirect(url, timeout))
+        findings.insert(len(blocked), check_https_redirect(url, timeout))
 
     points, grade = score(findings)
-    return Result(url, final, status, elapsed, points, grade, findings)
+    return Result(url, final, status, elapsed, points, grade, findings, blocked=bool(blocked))

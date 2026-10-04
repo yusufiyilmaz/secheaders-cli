@@ -43,12 +43,14 @@ def to_text(r: Result, color: bool = False) -> str:
         _c(f"secheaders · {r.url}", "1", color),
         f"  final URL : {r.final_url}  (HTTP {r.status}, {r.elapsed:.2f}s)",
         f"  grade     : {_c(r.grade, '1;' + GRADE_COLORS[r.grade], color)}  ({r.score}/100)",
-        "",
     ]
+    if r.blocked:
+        lines.append("  " + _c("note      : the request was blocked; this grade may not reflect the real site", "33", color))
+    lines.append("")
     width = max(len(f.check) for f in r.findings)
     for f in r.findings:
         icon = _c(ICONS[f.status], COLORS[f.status], color)
-        sev = f" [{f.severity}]" if f.status in ("warn", "fail") else ""
+        sev = f" [{f.severity}]" if f.status in ("warn", "fail") and f.severity != "info" else ""
         lines.append(f"  {icon} {f.check.ljust(width)}  {f.message}{_c(sev, '2', color)}")
         if f.fix and f.status != "pass":
             lines.append(f"    {' ' * width}  {_c('→ ' + f.fix, '2', color)}")

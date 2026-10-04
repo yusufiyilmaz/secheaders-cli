@@ -210,6 +210,42 @@ def check_cookies(set_cookies: list[str], is_https: bool) -> list[Finding]:
     return out or [_ok(name, f"{len(set_cookies)} cookie(s) with Secure, HttpOnly and SameSite.")]
 
 
+# ------------------------------------------------------------ blocked responses
+
+BLOCK_STATUSES = {401, 403, 429, 503}
+
+
+def detect_protection(h: dict[str, str], set_cookies: list[str]) -> str | None:
+    """Name the bot-protection / WAF vendor if its fingerprints are present."""
+    server = h.get("server", "").lower()
+    cookies = " ".join(set_cookies).lower()
+    if "cf-mitigated" in h or "cloudflare" in server:
+        return "Cloudflare"
+    if "x-iinfo" in h or "incap_ses" in cookies or "visid_incap" in cookies:
+        return "Imperva"
+    if "x-sucuri-id" in h or "sucuri" in server:
+        return "Sucuri"
+    if "akamaighost" in server:
+        return "Akamai"
+    if "awselb" in cookies or "aws-waf-token" in cookies:
+        return "AWS WAF"
+    return None
+
+
+def check_blocked(status: int, h: dict[str, str], set_cookies: list[str]) -> list[Finding]:
+    """Warn when the response looks like a block or bot-challenge page instead of the real site."""
+    if status not in BLOCK_STATUSES:
+        return []
+    vendor = detect_protection(h, set_cookies)
+    who = f" from {vendor} bot protection" if vendor else ""
+    return [Finding(
+        "Blocked response", "warn", "info",
+        f"The site answered HTTP {status}{who}. These headers may belong to a block or challenge page, "
+        "not the real site, so the grade may not be accurate.",
+        "Compare with a normal browser: DevTools → Network → the page request → Response Headers.",
+    )]
+
+
 # --------------------------------------------------------------------- aggregate
 
 def analyze(headers: dict[str, str], set_cookies: list[str] | None = None, is_https: bool = True) -> list[Finding]:
