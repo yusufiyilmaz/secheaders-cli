@@ -67,7 +67,7 @@ Kurmadan çalıştırmak için: `python -m secheaders example.com`
 python -m unittest discover -s tests -v
 ```
 
-28 test var: başlık kontrolleri için çevrimdışı birim testleri, ve gerçek bir yerel HTTP sunucusuna bağlanan entegrasyon testleri (internet gerekmez).
+35 test var: başlık kontrolleri için çevrimdışı birim testleri, ve gerçek bir yerel HTTP sunucusuna bağlanan entegrasyon testleri (internet gerekmez).
 
 ## Proje yapısı
 
@@ -87,6 +87,7 @@ Kontroller (`checks.py`) ağdan tamamen ayrı tutuldu; bu sayede her kural birka
 - Sadece **yanıt başlıklarına** bakar; sayfanın içeriğini veya JavaScript'i incelemez.
 - CSP kontrolü yaygın hataları yakalar, ama her politikayı tam olarak değerlendiremez (örn. `strict-dynamic` ayrıntıları).
 - Tek bir isteğe bakar; farklı sayfalarda farklı başlıklar olabilir.
+- Bot koruması (Cloudflare vb.) kullanan siteler aracı engelleyip bir doğrulama sayfası gösterebilir. Bu durumda araç **"Blocked response"** uyarısı verir; not, sitenin kendisine değil o sayfaya ait olabilir.
 
 ## Yol haritası
 

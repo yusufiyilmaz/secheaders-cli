@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "secheaders"
-version = "0.1.0"
+version = "0.1.1"
 description = "Check a website's HTTP security headers, get a grade and concrete fixes."
 readme = "README.md"
 license = { text = "MIT" }

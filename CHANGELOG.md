@@ -3,6 +3,15 @@
 All notable changes to this project are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-10-05
+
+### Fixed
+
+- Sites behind bot protection (Cloudflare, Imperva, Sucuri, Akamai, AWS WAF) were graded on their block or
+  challenge page as if it were the real site. Responses with HTTP 401/403/429/503 are now flagged with a
+  "Blocked response" warning and a note under the grade, and the protection vendor is named when it can be detected.
+- The HTTPS redirect check reported a false failure when plain HTTP was blocked; it now says it could not verify.
+
 ## [0.1.0] - 2026-10-05
 
 First public release.
@@ -19,4 +28,5 @@ First public release.
 - `--fail-under GRADE` exit code for CI pipelines; scanning several URLs at once.
 - 28 unit and integration tests and a GitHub Actions workflow (Linux and Windows, Python 3.9 to 3.13).
 
+[0.1.1]: https://github.com/yusufiyilmaz/secheaders-cli/releases/tag/v0.1.1
 [0.1.0]: https://github.com/yusufiyilmaz/secheaders-cli/releases/tag/v0.1.0
