@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "secheaders"
+version = "0.1.0"
+description = "Check a website's HTTP security headers, get a grade and concrete fixes."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Yusuf Yılmaz" }]
+requires-python = ">=3.9"
+dependencies = []
+keywords = ["security", "http", "headers", "csp", "hsts", "cli"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Environment :: Console",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+]
+
+[project.urls]
+Homepage = "https://github.com/yusufiyilmaz/secheaders-cli"
+
+[project.scripts]
+secheaders = "secheaders.cli:main"
+
+[tool.setuptools]
+packages = ["secheaders"]
